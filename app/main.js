@@ -9,6 +9,9 @@ define(function (require) {
 
 	var render = require('./render');
 
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+
 	var b2Vec2 = Box2D.Common.Math.b2Vec2;
 	var b2AABB = Box2D.Collision.b2AABB;
 	var b2BodyDef = Box2D.Dynamics.b2BodyDef;
@@ -22,21 +25,59 @@ define(function (require) {
 	var b2MouseJointDef = Box2D.Dynamics.Joints.b2MouseJointDef;
 
 	var world = new b2World(new b2Vec2(0, 9.00), true);
+	setUpDebugDraw();
+	window.setInterval(update, 1000 / 60);
 
-	//window.setInterval(update, 1000 / 60);
+	const SCALE = 30;
 
+	new Rect(0, 0, 10, 10, b2Body.b2_dynamicBody, '', new b2Vec2(0.0, 0.0));
+	
 	function update () {
 		world.Step(1/60,10,10);
+		world.DrawDebugData();
+        world.ClearForces();
 	}
 
-	var Game = Engine.createWorld({
+	function Rect(x, y, width, height, type, name, vel) {
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
 
-	});
+		this.bodyDef = new b2BodyDef;
+		this.bodyDef.type = type;
+		this.name = name;
+		this.bodyDef.userData = name;
+		this.bodyDef.position.Set(x / SCALE, y / SCALE);
 
-	Game.addBox({
-		width: 10,
-		height: 10,
-		weight: 
-	});
+		this.polygonShape = new b2PolygonShape;
+		this.polygonShape.SetAsBox(width / 2 / SCALE, height / 2 / SCALE);
+
+		this.fixtureDef = new b2FixtureDef;
+		this.fixtureDef.density = 4.0;
+		this.fixtureDef.friction = 0.2;
+		this.fixtureDef.restitution = 0.1;
+		this.fixtureDef.shape = this.polygonShape;
+	 
+		this.body = world.CreateBody(this.bodyDef);
+		this.body.SetLinearVelocity(vel);
+		this.body.CreateFixture(this.fixtureDef);
+	};
+
+	function setUpDebugDraw () {
+	    var debugDraw = new b2DebugDraw();
+	    debugDraw.SetSprite(ctx);
+	    debugDraw.SetDrawScale(30.0);
+	    debugDraw.SetFillAlpha(0.5);
+	    debugDraw.SetLineThickness(1.0);
+	    debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+	    world.SetDebugDraw(debugDraw);
+	}
+
+
+	
+
+
+
 
 });
