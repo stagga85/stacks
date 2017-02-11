@@ -7,7 +7,7 @@ define(function (require) {
 	var _ = require('underscore');
 	var Box2D = require('box2d');
 
-	var render = require('./render');
+	var render = require('./rendering/render');
 
 	var canvas = document.getElementById('canvas');
 	var ctx = canvas.getContext('2d');
