@@ -18,7 +18,9 @@ define(function (require) {
 
 	var _world;
 	var _SCALE = 30;
+	var _GRID_SIZE = 40;
 	var _gameObjects = [];
+	var _imageResources = [];
 	
 	var _canvas;
 	var _ctx;
@@ -37,19 +39,37 @@ define(function (require) {
 
 	function _update () {
 		_ctx.clearRect(0, 0, _canvas.width, _canvas.height);
-		_world.Step(1/60,10,10);
+		_world.Step(1/60, 10, 10);
 
 		_renderGameObjects();
 
 		if (_drawGrid) {
-			utils.drawGrid(0.8, 5, _canvas.width, _canvas.height, _ctx);
+			utils.drawGrid(0.8, _GRID_SIZE, _canvas.width, _canvas.height, _ctx);
 		}
+
+		_world.ClearForces();
 	}
 
 	function _renderGameObjects () {
 	    for (element in _gameObjects) {
 	    	_gameObjects[element].draw();
+	    	if (new Date().getTime() - _gameObjects[element].timeMade > 5000 && _gameObjects[element].particle) {
+	    		_removeBody(_gameObjects[element].body);
+	    		delete _gameObjects[element];
+	    	}
 	    }
+	}
+
+	function _removeBody (bodyToDelete) {
+		var body = _world.GetBodyList();
+        while (body) {
+            var currentBody = body;
+            if (currentBody === bodyToDelete) {
+                _world.DestroyBody(currentBody);
+                console.log("body removed");
+            }
+            body = body.GetNext();
+        }
 	}
     
     function _updateCursorLocation (mouseMove) {
@@ -65,6 +85,12 @@ define(function (require) {
 		_canvas = document.getElementById(params.canvas);
 		_canvas.addEventListener("mousemove", _updateCursorLocation, false);
 
+		// Prevent default right-click browser action.
+		_canvas.addEventListener('contextmenu', function(e) {
+    		e.preventDefault();
+   			e.stopPropagation();
+		}, false);  
+
 		_canvas.width = params.width;
 		_canvas.height = params.height;
 
@@ -74,17 +100,33 @@ define(function (require) {
 
 		window.setInterval(_update, 1000 / 60);
 
-		window.setInterval(_spewBox, 1000);
+		//window.setInterval(_spewBox, 1000 / 60);
 	}
 
 	function _spewBox () {
-		_gameObjects[id++] = new Rect(50, 50, 10, 10, b2Body.b2_dynamicBody, id, new b2Vec2(0.0, 0.0), _world, "box");
+		_gameObjects[id++] = new Rect(50, 50, 20, 20, b2Body.b2_dynamicBody, id, new b2Vec2(5.0, 0), _world, true);
 	}
 
 	var id = 0;
-	function placeBox () {
+	function placeBlock (image) {
 		_log(_gameObjects.length);
-	    _gameObjects[id++] = new Rect(_cursorX, _cursorY, 10, 10, b2Body.b2_dynamicBody, id, new b2Vec2(0.0, 0.0), _world, "box");
+	    _gameObjects[id++] = new Rect(_cursorX, _cursorY, 10, 10, b2Body.b2_dynamicBody, id, new b2Vec2(0.0, 0.0), _world, false, image);
+	}
+
+	function placeStaticBlock (image, size) {
+		_log(_gameObjects.length);
+	    _gameObjects[id++] = new Rect(
+	    								_snapToX(_cursorX, size), 
+	    								_snapToY(_cursorY, size), 
+	    								size, 
+	    								size, 
+	    								b2Body.b2_staticBody, 
+	    								id, 
+	    								new b2Vec2(0.0, 0.0), 
+	    								_world, 
+	    								false, 
+	    								image
+    								);
 	}
 
 	function _makeBody (width, height, pX, pY, type, name, vel) {
@@ -106,6 +148,7 @@ define(function (require) {
 	    var body = _world.CreateBody(bodyDef);
 	    body.SetLinearVelocity(vel);
 	    body.CreateFixture(fixtureDef);
+
 	}
 
 	function _makeBoundaries() {
@@ -122,11 +165,15 @@ define(function (require) {
 	    _makeBody(30,_canvas.height,_canvas.width + 15,_canvas.height/2,b2Body.b2_staticBody, "wall");
 	}
 
-	function Rect (x, y, width, height, type, name, vel, world) {
+	function Rect (x, y, width, height, type, name, vel, world, particle, image) {
 		this.x = x;
 		this.y = y;
 		this.width = width;
 		this.height = height;
+		this.timeMade = new Date().getTime();
+		this.particle = particle;
+
+		this.image = image;
 
 		this.bodyDef = new b2BodyDef;
 		this.bodyDef.type = type;
@@ -146,7 +193,6 @@ define(function (require) {
 		this.body = world.CreateBody(this.bodyDef);
 		this.body.SetLinearVelocity(vel);
 		this.body.CreateFixture(this.fixtureDef);
-
 	}
 
 	Rect.prototype.draw = function() {
@@ -180,6 +226,22 @@ define(function (require) {
 		_ctx.restore();
 	};
 
+	function _snapToX(xCoord, size) {
+	    for (var i = 0; i < _canvas.width; i += size) {
+	        if (xCoord >= i && xCoord <= i + size) {
+	            return i + _GRID_SIZE / 2;
+	        }
+	    }
+	}
+
+	function _snapToY(yCoord, size) {
+	    for (var i = 0; i < _canvas.width; i += size) {
+	        if (yCoord >= i && yCoord <= i + size) {
+	            return i + _GRID_SIZE / 2;
+	        }
+	    }
+	}
+
 	var createWorld = function (params) {
 		_init(params);
 	};
@@ -192,10 +254,20 @@ define(function (require) {
 		_debugging = !_debugging;
 	};
 
+	var loadImageResource = function (params) {
+		console.log(params);
+		_imageResources[params.name] = new Image();
+		_imageResources[params.name].src = params.url;
+
+		return _imageResources[params.name];
+	};
+
 	return {
 		createWorld: createWorld,
 		toggleGrid: toggleGrid,
 		toggleDebug: toggleDebug,
-		placeBox: placeBox
+		placeBlock: placeBlock,
+		placeStaticBlock: placeStaticBlock,
+		loadImageResource: loadImageResource
 	}
 });

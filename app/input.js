@@ -5,9 +5,10 @@ define(function (require) {
 	var _buttonMap = [];
 
 	var LEFT_CLICK = 0;
-	var RIGHT_CLICK = 1;
+	var RIGHT_CLICK = 2;
 
 	window.onmousedown = function (e) {
+		e.preventDefault();
 		if (!_buttonMap[e.button]) {
 	    	console.log('No mapping for button: ' + e.button);
 	    } else {

@@ -7,10 +7,15 @@ define(function (require) {
 	var Input = require('./input');
 	var Engine = require('./engine');
 
-	var Game = Engine.createWorld({
+	Engine.createWorld({
 		canvas: 'canvas',
 		width: 800,
 		height: 800
+	});
+
+	var ground = Engine.loadImageResource({
+		name: 'ground',
+		url: 'res/img/ground.jpg'
 	});
 
 	Input.mapKey(71, function () {
@@ -22,7 +27,11 @@ define(function (require) {
 	});
 
 	Input.mapMouse(Input.LEFT_CLICK, function () {
-		Engine.placeBox();
+		Engine.placeBlock();
+	});
+
+	Input.mapMouse(Input.RIGHT_CLICK, function () {
+		Engine.placeStaticBlock(ground, 40);
 	});
 
 });
